@@ -65,7 +65,6 @@ def publish_status(msg):
 def connect_mqtt():
     global _mqtt_client
 
-    ssl_params = {}
     client = MQTTClient(
         config.MQTT_CLIENT_ID,
         config.MQTT_BROKER,
@@ -73,7 +72,7 @@ def connect_mqtt():
         user=config.MQTT_USER or None,
         password=config.MQTT_PASSWORD or None,
         ssl=config.MQTT_USE_SSL,
-        ssl_params=ssl_params,
+        ssl_params={"server_hostname": config.MQTT_BROKER},
     )
     client.set_callback(on_message)
     client.connect()

@@ -89,25 +89,25 @@
     <div class="sfields" id="sfields">
       <div class="field">
         <label>ブローカー</label>
-        <input id="sBroker" value="broker.hivemq.com">
+        <input id="sBroker" value="">
       </div>
       <div class="field">
         <label>WebSocket ポート</label>
-        <input id="sPort" type="number" value="8000">
+        <input id="sPort" type="number" value="8884">
       </div>
       <div class="field">
         <label>プロトコル</label>
         <select id="sScheme">
-          <option value="ws">ws (テスト用)</option>
-          <option value="wss">wss (本番 TLS)</option>
+          <option value="wss">wss (TLS)</option>
+          <option value="ws">ws (非暗号化)</option>
         </select>
       </div>
       <div class="field">
-        <label>ユーザー名（任意）</label>
+        <label>ユーザー名</label>
         <input id="sUser" value="">
       </div>
       <div class="field">
-        <label>パスワード（任意）</label>
+        <label>パスワード</label>
         <input id="sPass" type="password" value="">
       </div>
       <div class="field">
@@ -120,7 +120,7 @@
       </div>
       <div class="field">
         <label>シークレット</label>
-        <input id="sSecret" value="CHANGE_ME_TO_RANDOM_STRING">
+        <input id="sSecret" value="">
       </div>
       <button class="sbtn" onclick="saveAndReconnect()">保存して再接続</button>
     </div>

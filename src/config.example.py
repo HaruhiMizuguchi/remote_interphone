@@ -16,28 +16,19 @@ ANGLE_REST = 0               # 待機位置（ボタンから離れた角度）
 ANGLE_PRESS = 90             # 押下位置（ボタンを押す角度）
 PRESS_DURATION_MS = 600      # ボタンを押し続ける時間 (ms)
 
-# ===== MQTT 設定 =====
-# --- テスト用: 公開ブローカー（認証なし）---
-MQTT_BROKER = "broker.hivemq.com"
-MQTT_PORT = 1883
-MQTT_USER = ""
-MQTT_PASSWORD = ""
-MQTT_USE_SSL = False
-MQTT_WS_PORT = 8000          # controller.html 用（WebSocket）
-MQTT_WS_SCHEME = "ws"
-
-# --- 本番用: HiveMQ Cloud（TLS + 認証）---
-# MQTT_BROKER = "xxxxxxxx.s1.eu.hivemq.cloud"
-# MQTT_PORT = 8883
-# MQTT_USER = "your-username"
-# MQTT_PASSWORD = "your-password"
-# MQTT_USE_SSL = True
-# MQTT_WS_PORT = 8884
-# MQTT_WS_SCHEME = "wss"
+# ===== MQTT 設定 (HiveMQ Cloud) =====
+MQTT_BROKER = "xxxxxxxx.s1.eu.hivemq.cloud"
+MQTT_PORT = 8883
+MQTT_USER = "your-username"
+MQTT_PASSWORD = "your-password"
+MQTT_USE_SSL = True
+MQTT_WS_PORT = 8884
+MQTT_WS_SCHEME = "wss"
 
 MQTT_CLIENT_ID = "pico_interphone"
 MQTT_TOPIC_CMD = "interphone/cmd"
 MQTT_TOPIC_STATUS = "interphone/status"
 
 # 共有シークレット（スマホ側と一致させること）
+# python -c "import secrets; print(secrets.token_urlsafe(24))" で生成
 MQTT_SECRET = "CHANGE_ME_TO_RANDOM_STRING"

@@ -85,7 +85,7 @@ def connect_mqtt():
         user=config.MQTT_USER or None,
         password=config.MQTT_PASSWORD or None,
         ssl=config.MQTT_USE_SSL,
-        ssl_params={},
+        ssl_params={"server_hostname": config.MQTT_BROKER},
     )
     client.set_callback(on_message)
     client.connect()
