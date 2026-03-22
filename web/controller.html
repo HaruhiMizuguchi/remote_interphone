@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interphone Controller</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#0f172a;color:#e2e8f0;
+    display:flex;justify-content:center;align-items:center;
+    min-height:100vh;padding:16px;
+  }
+  .wrap{max-width:400px;width:100%}
+  .card{
+    background:#1e293b;border-radius:16px;padding:32px;
+    text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);
+    margin-bottom:16px;
+  }
+  h1{font-size:1.2rem;margin-bottom:6px}
+  .conn{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:.8rem;color:#94a3b8;margin-bottom:28px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0}
+  .dot.on{background:#4ade80}
+  .btn{
+    display:block;width:100%;padding:20px;
+    font-size:1.2rem;font-weight:700;
+    color:#fff;background:#2563eb;border:none;border-radius:14px;
+    cursor:pointer;transition:background .15s,opacity .15s;
+  }
+  .btn:active{background:#1d4ed8}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .msg{margin-top:16px;font-size:.9rem;min-height:1.4em}
+  .ok{color:#4ade80}.err{color:#f87171}.warn{color:#fbbf24}
+
+  /* settings panel */
+  .settings{
+    background:#1e293b;border-radius:16px;padding:24px;
+    box-shadow:0 8px 32px rgba(0,0,0,.4);
+  }
+  .stoggle{
+    display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;user-select:none;margin-bottom:0;
+  }
+  .stoggle h2{font-size:.95rem;font-weight:600}
+  .stoggle .arrow{transition:transform .2s;font-size:.8rem}
+  .stoggle .arrow.open{transform:rotate(90deg)}
+  .sfields{overflow:hidden;max-height:0;transition:max-height .3s ease}
+  .sfields.open{max-height:600px}
+  .field{margin-top:14px;text-align:left}
+  .field label{display:block;font-size:.75rem;color:#94a3b8;margin-bottom:4px}
+  .field input,.field select{
+    width:100%;padding:10px 12px;
+    background:#0f172a;border:1px solid #334155;border-radius:8px;
+    color:#e2e8f0;font-size:.9rem;outline:none;
+  }
+  .field input:focus{border-color:#2563eb}
+  .sbtn{
+    margin-top:16px;width:100%;padding:10px;
+    background:#334155;color:#e2e8f0;border:none;border-radius:8px;
+    font-size:.85rem;cursor:pointer;
+  }
+  .sbtn:active{background:#475569}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Control Card -->
+  <div class="card">
+    <h1>Interphone Controller</h1>
+    <div class="conn">
+      <span class="dot" id="dot"></span>
+      <span id="connLabel">未接続</span>
+    </div>
+    <button class="btn" id="btn" disabled onclick="doUnlock()">開錠</button>
+    <p class="msg" id="msg"></p>
+  </div>
+
+  <!-- Settings -->
+  <div class="settings">
+    <div class="stoggle" onclick="toggleSettings()">
+      <h2>MQTT 設定</h2>
+      <span class="arrow" id="arrow">▶</span>
+    </div>
+    <div class="sfields" id="sfields">
+      <div class="field">
+        <label>ブローカー</label>
+        <input id="sBroker" value="broker.hivemq.com">
+      </div>
+      <div class="field">
+        <label>WebSocket ポート</label>
+        <input id="sPort" type="number" value="8000">
+      </div>
+      <div class="field">
+        <label>プロトコル</label>
+        <select id="sScheme">
+          <option value="ws">ws (テスト用)</option>
+          <option value="wss">wss (本番 TLS)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ユーザー名（任意）</label>
+        <input id="sUser" value="">
+      </div>
+      <div class="field">
+        <label>パスワード（任意）</label>
+        <input id="sPass" type="password" value="">
+      </div>
+      <div class="field">
+        <label>トピック</label>
+        <input id="sTopic" value="interphone/cmd">
+      </div>
+      <div class="field">
+        <label>ステータストピック</label>
+        <input id="sTopicSt" value="interphone/status">
+      </div>
+      <div class="field">
+        <label>シークレット</label>
+        <input id="sSecret" value="CHANGE_ME_TO_RANDOM_STRING">
+      </div>
+      <button class="sbtn" onclick="saveAndReconnect()">保存して再接続</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MQTT.js via CDN -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+const STORAGE_KEY = 'interphone_mqtt';
+let client = null;
+
+function loadSettings() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const s = JSON.parse(saved);
+    document.getElementById('sBroker').value = s.broker || '';
+    document.getElementById('sPort').value   = s.port || 8000;
+    document.getElementById('sScheme').value  = s.scheme || 'ws';
+    document.getElementById('sUser').value    = s.user || '';
+    document.getElementById('sPass').value    = s.pass || '';
+    document.getElementById('sTopic').value   = s.topic || 'interphone/cmd';
+    document.getElementById('sTopicSt').value = s.topicSt || 'interphone/status';
+    document.getElementById('sSecret').value  = s.secret || '';
+  }
+}
+
+function getSettings() {
+  return {
+    broker:  document.getElementById('sBroker').value.trim(),
+    port:    parseInt(document.getElementById('sPort').value, 10),
+    scheme:  document.getElementById('sScheme').value,
+    user:    document.getElementById('sUser').value.trim(),
+    pass:    document.getElementById('sPass').value,
+    topic:   document.getElementById('sTopic').value.trim(),
+    topicSt: document.getElementById('sTopicSt').value.trim(),
+    secret:  document.getElementById('sSecret').value,
+  };
+}
+
+function saveSettings() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+}
+
+function setConn(on, label) {
+  document.getElementById('dot').className = 'dot' + (on ? ' on' : '');
+  document.getElementById('connLabel').textContent = label;
+  document.getElementById('btn').disabled = !on;
+}
+
+function showMsg(text, cls) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + (cls || '');
+}
+
+function mqttConnect() {
+  if (client) { try { client.end(true); } catch(e){} }
+
+  const s = getSettings();
+  const url = `${s.scheme}://${s.broker}:${s.port}/mqtt`;
+  setConn(false, '接続中…');
+  showMsg('', '');
+
+  const opts = { reconnectPeriod: 5000 };
+  if (s.user) { opts.username = s.user; opts.password = s.pass; }
+
+  client = mqtt.connect(url, opts);
+
+  client.on('connect', () => {
+    setConn(true, '接続済み');
+    client.subscribe(s.topicSt);
+  });
+
+  client.on('close',   () => setConn(false, '切断'));
+  client.on('offline', () => setConn(false, 'オフライン'));
+  client.on('error',   (e) => {
+    setConn(false, 'エラー');
+    showMsg(String(e), 'err');
+  });
+
+  client.on('message', (_topic, payload) => {
+    const msg = payload.toString();
+    if (msg === 'unlocked') {
+      showMsg('開錠しました', 'ok');
+    } else if (msg === 'rejected') {
+      showMsg('シークレット不一致', 'err');
+    } else if (msg === 'online') {
+      showMsg('Pico オンライン', 'ok');
+    } else {
+      showMsg('Pico: ' + msg, 'warn');
+    }
+  });
+}
+
+function doUnlock() {
+  if (!client || !client.connected) { showMsg('未接続です', 'err'); return; }
+  const s = getSettings();
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '送信中…';
+  showMsg('', '');
+
+  client.publish(s.topic, s.secret);
+  setTimeout(() => { btn.disabled = false; btn.textContent = '開錠'; }, 2000);
+}
+
+function saveAndReconnect() {
+  saveSettings();
+  mqttConnect();
+  showMsg('設定を保存しました', 'ok');
+}
+
+function toggleSettings() {
+  const f = document.getElementById('sfields');
+  const a = document.getElementById('arrow');
+  f.classList.toggle('open');
+  a.classList.toggle('open');
+}
+
+// --- init ---
+loadSettings();
+mqttConnect();
+</script>
+</body>
+</html>

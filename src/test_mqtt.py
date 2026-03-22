@@ -1,14 +1,55 @@
+"""
+サーボ無しで MQTT 通信だけ確認するテスト用スクリプト。
+
+確認項目:
+  1. Wi-Fi 接続
+  2. MQTT ブローカーへの接続
+  3. controller.html からメッセージが届くか
+  4. シークレットの照合
+"""
+
 import network
 import time
 import machine
 from umqtt.simple import MQTTClient
 import config
-from servo import Servo
 
 led = machine.Pin("LED", machine.Pin.OUT)
 
 
-# ---------- Wi-Fi ----------
+class FakeServo:
+    def press_button(self):
+        print("[TEST] press_button called - servo would move here")
+
+    def deinit(self):
+        print("[TEST] servo deinit")
+
+
+servo = FakeServo()
+_mqtt_client = None
+
+
+def publish_status(msg):
+    try:
+        if _mqtt_client:
+            _mqtt_client.publish(config.MQTT_TOPIC_STATUS, msg)
+    except:
+        pass
+
+
+def on_message(topic, msg):
+    payload = msg.decode().strip()
+    print(f"MQTT recv: {topic} -> {payload}")
+
+    if payload == config.MQTT_SECRET:
+        print("[TEST] Secret OK -> would press button")
+        led_blink(3, 100)
+        servo.press_button()
+        publish_status(b"unlocked")
+    else:
+        print("[TEST] Secret mismatch, ignoring")
+        publish_status(b"rejected")
+
 
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
@@ -24,6 +65,8 @@ def connect_wifi():
         if wlan.isconnected():
             break
         time.sleep(1)
+        print(".", end="")
+    print()
 
     if not wlan.isconnected():
         raise RuntimeError("Wi-Fi connection failed")
@@ -32,48 +75,17 @@ def connect_wifi():
     return wlan
 
 
-# ---------- MQTT ----------
-
-servo = None
-
-
-def on_message(topic, msg):
-    payload = msg.decode().strip()
-    print(f"MQTT recv: {topic} -> {payload}")
-
-    if payload == config.MQTT_SECRET:
-        print("Secret OK -> pressing button")
-        led_blink(3, 100)
-        servo.press_button()
-        publish_status(b"unlocked")
-    else:
-        print("Secret mismatch, ignoring")
-        publish_status(b"rejected")
-
-
-_mqtt_client = None
-
-
-def publish_status(msg):
-    try:
-        if _mqtt_client:
-            _mqtt_client.publish(config.MQTT_TOPIC_STATUS, msg)
-    except:
-        pass
-
-
 def connect_mqtt():
     global _mqtt_client
 
-    ssl_params = {}
     client = MQTTClient(
-        config.MQTT_CLIENT_ID,
+        config.MQTT_CLIENT_ID + "_test",
         config.MQTT_BROKER,
         port=config.MQTT_PORT,
         user=config.MQTT_USER or None,
         password=config.MQTT_PASSWORD or None,
         ssl=config.MQTT_USE_SSL,
-        ssl_params=ssl_params,
+        ssl_params={},
     )
     client.set_callback(on_message)
     client.connect()
@@ -85,8 +97,6 @@ def connect_mqtt():
     return client
 
 
-# ---------- LED ----------
-
 def led_blink(times, interval_ms):
     for _ in range(times):
         led.on()
@@ -95,17 +105,14 @@ def led_blink(times, interval_ms):
         time.sleep_ms(interval_ms)
 
 
-# ---------- メイン ----------
-
 def main():
-    global servo
-
+    print("=== MQTT TEST MODE (no servo) ===")
     connect_wifi()
-    servo = Servo()
 
     led.on()
-    print("Waiting for MQTT unlock commands...")
     print(f"Topic: {config.MQTT_TOPIC_CMD}")
+    print(f"Secret: {config.MQTT_SECRET[:4]}{'*' * (len(config.MQTT_SECRET) - 4)}")
+    print("Waiting for commands...")
 
     while True:
         try:
@@ -126,8 +133,6 @@ def main():
             led.off()
             time.sleep(5)
 
-    publish_status(b"offline")
-    servo.deinit()
     led.off()
 
 
