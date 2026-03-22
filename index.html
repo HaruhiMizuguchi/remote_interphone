@@ -97,9 +97,8 @@
       </div>
       <div class="field">
         <label>プロトコル</label>
-        <select id="sScheme">
-          <option value="wss">wss (TLS)</option>
-          <option value="ws">ws (非暗号化)</option>
+        <select id="sScheme" disabled>
+          <option value="wss">wss (TLS) 固定</option>
         </select>
       </div>
       <div class="field">
@@ -128,19 +127,19 @@
 
 </div>
 
-<!-- MQTT.js via CDN -->
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<!-- MQTT.js local copy -->
+<script src="./vendor/mqtt.min.js"></script>
 <script>
 const STORAGE_KEY = 'interphone_mqtt';
 let client = null;
 
 function loadSettings() {
   const saved = localStorage.getItem(STORAGE_KEY);
+  document.getElementById('sScheme').value = 'wss';
   if (saved) {
     const s = JSON.parse(saved);
     document.getElementById('sBroker').value = s.broker || '';
     document.getElementById('sPort').value   = s.port || 8000;
-    document.getElementById('sScheme').value  = s.scheme || 'ws';
     document.getElementById('sUser').value    = s.user || '';
     document.getElementById('sPass').value    = s.pass || '';
     document.getElementById('sTopic').value   = s.topic || 'interphone/cmd';
@@ -153,7 +152,7 @@ function getSettings() {
   return {
     broker:  document.getElementById('sBroker').value.trim(),
     port:    parseInt(document.getElementById('sPort').value, 10),
-    scheme:  document.getElementById('sScheme').value,
+    scheme:  'wss',
     user:    document.getElementById('sUser').value.trim(),
     pass:    document.getElementById('sPass').value,
     topic:   document.getElementById('sTopic').value.trim(),
