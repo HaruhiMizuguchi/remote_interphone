@@ -39,7 +39,7 @@
 
 - [x] 通信方式の決定 → MQTT 採用
 - [x] MQTT 版 `main.py` 実装
-- [x] スマホ操作ページ `web/controller.html` 作成
+- [x] スマホ操作ページ `index.html` 作成（GitHub Pages で公開）
 - [x] シークレット照合によるセキュリティ
 - [ ] `umqtt.simple` のインストール（`install_deps.py`）
 - [ ] テスト用公開ブローカーで通信確認（`test_mqtt.py`）
@@ -53,7 +53,7 @@
 | `src/main.py` | Wi-Fi + MQTT メインループ |
 | `src/install_deps.py` | umqtt インストール用 |
 | `src/test_mqtt.py` | サーボ無し MQTT テスト |
-| `web/controller.html` | スマホ操作ページ（MQTT over WebSocket） |
+| `index.html` | スマホ操作ページ（GitHub Pages で公開） |
 
 **完了条件:** 外出先のスマホから開錠操作ができる
 
